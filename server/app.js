@@ -1,3 +1,4 @@
+// server/app.js
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -11,30 +12,37 @@ const productRoutes = require('./routes/product');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-// Middleware
+// CORS: allow local dev + your Vercel domain (same-origin on prod means CORS won’t trigger)
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.CLIENT_URL,            // e.g. http://localhost:3000 (dev)
+  'https://ecommerce-lab-teal.vercel.app' // your deployed site
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    // allow no-origin (curl/postman) and any in the whitelist
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
-// Serve static files from uploads directory
+// static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
+// routes
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+// health
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// IMPORTANT: export the app (no app.listen here)
 module.exports = app;
